@@ -1,0 +1,157 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "LAKIS SOLARWORLD Pro aktivieren",
+        "description": "Geben Sie Ihren lebenslangen LAKIS SOLARWORLD PRO Lizenzschlüssel ein.",
+        "data": {
+          "license_key": "Lizenzschlüssel"
+        }
+      },
+      "modules": {
+        "title": "LAKIS SOLARWORLD Module",
+        "description": "Wählen Sie die Module aus, die Sie verwenden möchten.",
+        "data": {
+          "modules": "Aktive Module"
+        }
+      },
+      "energy": {
+        "title": "Energie / Haus",
+        "data": {
+          "house_power": "Hausverbrauch"
+        }
+      },
+      "pv": {
+        "title": "Photovoltaik",
+        "data": {
+          "pv_power": "PV-Leistung"
+        }
+      },
+      "grid": {
+        "title": "Netz",
+        "data": {
+          "grid_power": "Netzleistung"
+        }
+      },
+      "battery": {
+        "title": "Batterie",
+        "data": {
+          "battery_soc": "Batterie SOC",
+          "battery_power": "Batterieleistung",
+          "battery_capacity_kwh": "Batteriekapazität (kWh)",
+          "battery_target_soc": "Ziel-SOC (%)"
+        }
+      },
+      "wallbox": {
+        "title": "Wallbox",
+        "data": {
+          "wallbox_power": "Ladeleistung",
+          "wallbox_status": "Status"
+        }
+      },
+      "vehicle": {
+        "title": "Fahrzeug",
+        "data": {
+          "vehicle_name": "Fahrzeugname",
+          "vehicle_soc": "Fahrzeug SOC",
+          "vehicle_status": "Fahrzeugstatus",
+          "vehicle_target_soc": "Ziel-SOC (%)"
+        }
+      },
+      "heatpump": {
+        "title": "Wärmepumpe",
+        "data": {
+          "heatpump_entity": "Wärmepumpe",
+          "heatpump_power": "Elektrische Leistung",
+          "heatpump_flow_temp": "Vorlauftemperatur",
+          "heatpump_return_temp": "Rücklauftemperatur",
+          "heatpump_outdoor_temp": "Außentemperatur",
+          "heatpump_dhw_temp": "Warmwassertemperatur"
+        }
+      },
+      "climate": {
+        "title": "Klimaanlagen",
+        "data": {
+          "climate_entities": "Klimageräte"
+        }
+      }
+    },
+    "error": {
+      "invalid_license": "Der Lizenzschlüssel ist ungültig oder gehört nicht zu LAKIS SOLARWORLD Pro."
+    },
+    "abort": {
+      "already_configured": "Diese LAKIS Lizenz ist auf diesem Home-Assistant-System bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "LAKIS SOLARWORLD Einstellungen",
+        "description": "Module und Entitäten können jederzeit geändert werden.",
+        "data": {
+          "modules": "Aktive Module"
+        }
+      },
+      "energy": {
+        "title": "Energie / Haus",
+        "data": {
+          "house_power": "Hausverbrauch"
+        }
+      },
+      "pv": {
+        "title": "Photovoltaik",
+        "data": {
+          "pv_power": "PV-Leistung"
+        }
+      },
+      "grid": {
+        "title": "Netz",
+        "data": {
+          "grid_power": "Netzleistung"
+        }
+      },
+      "battery": {
+        "title": "Batterie",
+        "data": {
+          "battery_soc": "Batterie SOC",
+          "battery_power": "Batterieleistung",
+          "battery_capacity_kwh": "Batteriekapazität (kWh)",
+          "battery_target_soc": "Ziel-SOC (%)"
+        }
+      },
+      "wallbox": {
+        "title": "Wallbox",
+        "data": {
+          "wallbox_power": "Ladeleistung",
+          "wallbox_status": "Status"
+        }
+      },
+      "vehicle": {
+        "title": "Fahrzeug",
+        "data": {
+          "vehicle_name": "Fahrzeugname",
+          "vehicle_soc": "Fahrzeug SOC",
+          "vehicle_status": "Fahrzeugstatus",
+          "vehicle_target_soc": "Ziel-SOC (%)"
+        }
+      },
+      "heatpump": {
+        "title": "Wärmepumpe",
+        "data": {
+          "heatpump_entity": "Wärmepumpe",
+          "heatpump_power": "Elektrische Leistung",
+          "heatpump_flow_temp": "Vorlauftemperatur",
+          "heatpump_return_temp": "Rücklauftemperatur",
+          "heatpump_outdoor_temp": "Außentemperatur",
+          "heatpump_dhw_temp": "Warmwassertemperatur"
+        }
+      },
+      "climate": {
+        "title": "Klimaanlagen",
+        "data": {
+          "climate_entities": "Klimageräte"
+        }
+      }
+    }
+  }
+}
