@@ -1,6 +1,6 @@
 /* LAKIS SOLARWORLD Dashboard
  * Dashboard UI
- * Version 1.5.9-beta.1
+ * Version 1.5.9-beta.2
  *
  * Design:
  * - black / near-black background
@@ -26,11 +26,10 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._moduleSavePromise = null;
     this._moduleEventsAttached = false;
     this._dirty = false;
-    this._haSidebarHidden = false;
+    this._haSidebarCompact = false;
     this._haSidebarTargets = [];
-    this._kioskMode = false;
-    this._kioskInitialized = false;
-    this._savedDocumentStyles = null;
+    this._haLayoutTargets = [];
+    this._compactModeInitialized = false;
   }
 
   set hass(value) {
@@ -331,33 +330,6 @@ class LakisSolarworldDashboard extends HTMLElement {
           display: block;
           min-height: 100vh;
           width: 100%;
-        }
-
-        :host(.kiosk) {
-          position: fixed !important;
-          inset: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          min-width: 100vw !important;
-          min-height: 100vh !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          z-index: 99999 !important;
-        }
-
-        :host(.kiosk) .app {
-          width: 100vw;
-          min-width: 100vw;
-          min-height: 100vh;
-          color: #f4f8fc;
-          font-family:
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            Roboto,
-            Arial,
-            sans-serif;
-          background: #000;
         }
 
         * { box-sizing: border-box; }
@@ -1137,7 +1109,7 @@ class LakisSolarworldDashboard extends HTMLElement {
       </style>
 
       <div class="app">
-        <button class="ha-sidebar-toggle" data-ha-sidebar-toggle type="button" title="Vollbild verlassen" aria-label="Vollbild verlassen">⛶</button>
+        <button class="ha-sidebar-toggle" data-ha-sidebar-toggle type="button" title="${this._haSidebarCompact ? 'Navigation ausklappen' : 'Navigation einklappen'}" aria-label="${this._haSidebarCompact ? 'Navigation ausklappen' : 'Navigation einklappen'}">${this._haSidebarCompact ? '☰' : '‹'}</button>
         ${this._renderHeader()}
         ${this._renderTabs()}
         ${this._renderContent()}
@@ -1148,9 +1120,9 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._attachEvents();
     this._rendered = true;
 
-    if (!this._kioskInitialized) {
-      this._kioskInitialized = true;
-      setTimeout(() => this._enterKioskMode(), 80);
+    if (!this._compactModeInitialized) {
+      this._compactModeInitialized = true;
+      setTimeout(() => this._enterCompactMode(), 80);
     }
   }
 
@@ -1751,13 +1723,18 @@ class LakisSolarworldDashboard extends HTMLElement {
     return found;
   }
 
-  _setHASidebarHidden(hidden) {
-    this._haSidebarHidden = hidden;
+  _setHASidebarCompact(compact) {
+    this._haSidebarCompact = compact;
+
+    // Home Assistant uses the normal page layout when the sidebar remains in
+    // the document. Shrinking it (rather than hiding it) lets the dashboard
+    // receive the additional page width and keeps the navigation icons usable.
+    if (!window.matchMedia('(min-width: 870px)').matches) return;
 
     const sidebars = this._findInShadowRoots('ha-sidebar');
     const unique = [...new Set(sidebars)];
 
-    if (hidden) {
+    if (compact) {
       if (!this._haSidebarTargets.length) {
         this._haSidebarTargets = unique.map((el) => ({
           el,
@@ -1766,6 +1743,9 @@ class LakisSolarworldDashboard extends HTMLElement {
           width: el.style.width,
           minWidth: el.style.minWidth,
           maxWidth: el.style.maxWidth,
+          flex: el.style.flex,
+          overflow: el.style.overflow,
+          compactStyle: null,
         }));
       }
     } else if (!this._haSidebarTargets.length) {
@@ -1773,64 +1753,82 @@ class LakisSolarworldDashboard extends HTMLElement {
     }
 
     for (const target of this._haSidebarTargets) {
-      if (hidden) {
-        target.el.style.display = 'none';
-        target.el.style.visibility = 'hidden';
-        target.el.style.width = '0';
-        target.el.style.minWidth = '0';
-        target.el.style.maxWidth = '0';
+      if (compact) {
+        target.el.style.display = target.display || '';
+        target.el.style.visibility = target.visibility || '';
+        target.el.style.width = '64px';
+        target.el.style.minWidth = '64px';
+        target.el.style.maxWidth = '64px';
+        target.el.style.flex = '0 0 64px';
+        target.el.style.overflow = 'hidden';
+
+        if (!target.compactStyle && target.el.shadowRoot) {
+          const style = document.createElement('style');
+          style.dataset.lakisCompactSidebar = '';
+          style.textContent = `
+            :host { width: 64px !important; min-width: 64px !important; max-width: 64px !important; }
+            ha-list-item, ha-md-list-item, a { min-width: 64px !important; padding-inline: 18px !important; }
+            .label, .text, [slot="headline"], [slot="supporting"] { display: none !important; }
+          `;
+          target.el.shadowRoot.append(style);
+          target.compactStyle = style;
+        }
       } else {
         target.el.style.display = target.display;
         target.el.style.visibility = target.visibility;
         target.el.style.width = target.width;
         target.el.style.minWidth = target.minWidth;
         target.el.style.maxWidth = target.maxWidth;
+        target.el.style.flex = target.flex;
+        target.el.style.overflow = target.overflow;
+        target.compactStyle?.remove();
       }
     }
 
-    if (hidden) {
-      if (!this._savedDocumentStyles) {
-        this._savedDocumentStyles = {
-          htmlOverflow: document.documentElement.style.overflow,
-          bodyOverflow: document.body?.style.overflow || '',
-          bodyMargin: document.body?.style.margin || '',
-        };
+    if (compact && !this._haLayoutTargets.length) {
+      const layoutTargets = [
+        document.documentElement,
+        document.body,
+        ...this._findInShadowRoots('home-assistant'),
+        ...this._findInShadowRoots('home-assistant-main'),
+      ].filter(Boolean);
+      this._haLayoutTargets = [...new Set(layoutTargets)].map((el) => ({
+        el,
+        sidebarWidth: el.style.getPropertyValue('--sidebar-width'),
+      }));
+    }
+
+    for (const target of this._haLayoutTargets) {
+      if (compact) {
+        target.el.style.setProperty('--sidebar-width', '64px');
+      } else if (target.sidebarWidth) {
+        target.el.style.setProperty('--sidebar-width', target.sidebarWidth);
+      } else {
+        target.el.style.removeProperty('--sidebar-width');
       }
-      document.documentElement.style.overflow = 'hidden';
-      if (document.body) {
-        document.body.style.overflow = 'hidden';
-        document.body.style.margin = '0';
-      }
-    } else if (this._savedDocumentStyles) {
-      document.documentElement.style.overflow = this._savedDocumentStyles.htmlOverflow;
-      if (document.body) {
-        document.body.style.overflow = this._savedDocumentStyles.bodyOverflow;
-        document.body.style.margin = this._savedDocumentStyles.bodyMargin;
-      }
-      this._savedDocumentStyles = null;
+    }
+
+    if (!compact) {
       this._haSidebarTargets = [];
+      this._haLayoutTargets = [];
     }
   }
 
-  _enterKioskMode() {
-    this._kioskMode = true;
-    this.classList.add('kiosk');
-    this._setHASidebarHidden(true);
-    this._updateKioskButton();
+  _enterCompactMode() {
+    this._setHASidebarCompact(true);
+    this._updateCompactButton();
   }
 
-  _exitKioskMode() {
-    this._kioskMode = false;
-    this.classList.remove('kiosk');
-    this._setHASidebarHidden(false);
-    this._updateKioskButton();
+  _exitCompactMode() {
+    this._setHASidebarCompact(false);
+    this._updateCompactButton();
   }
 
-  _updateKioskButton() {
+  _updateCompactButton() {
     const button = this.querySelector('[data-ha-sidebar-toggle]');
     if (!button) return;
-    button.textContent = this._kioskMode ? '×' : '☰';
-    button.title = this._kioskMode ? 'Kiosk-Modus verlassen' : 'Kiosk-Modus starten';
+    button.textContent = this._haSidebarCompact ? '☰' : '‹';
+    button.title = this._haSidebarCompact ? 'Navigation ausklappen' : 'Navigation einklappen';
     button.setAttribute('aria-label', button.title);
   }
 
@@ -1838,10 +1836,10 @@ class LakisSolarworldDashboard extends HTMLElement {
     const sidebarToggle = this.querySelector("[data-ha-sidebar-toggle]");
     if (sidebarToggle) {
       sidebarToggle.addEventListener("click", () => {
-        if (this._kioskMode) {
-          this._exitKioskMode();
+        if (this._haSidebarCompact) {
+          this._exitCompactMode();
         } else {
-          this._enterKioskMode();
+          this._enterCompactMode();
         }
       });
     }
@@ -2122,7 +2120,7 @@ class LakisSolarworldDashboard extends HTMLElement {
     return `
       <div class="footer">
         LAKIS SOLARWORLD ENTWICKLUNG — Nachhaltige Energie. Für heute. Für morgen.
-        · Version 1.5.9-beta.1 · ENTWICKLUNG
+        · Version 1.5.9-beta.2 · ENTWICKLUNG
       </div>
     `;
   }
