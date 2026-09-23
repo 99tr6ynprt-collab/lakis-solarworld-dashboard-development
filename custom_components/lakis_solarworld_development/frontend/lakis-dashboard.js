@@ -1,6 +1,6 @@
 /* LAKIS SOLARWORLD Dashboard
  * Dashboard UI
- * Version 1.5.9-beta.3
+ * Version 1.5.9-beta.4
  *
  * Design:
  * - black / near-black background
@@ -26,7 +26,7 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._moduleSavePromise = null;
     this._moduleEventsAttached = false;
     this._dirty = false;
-    this._compactModeInitialized = false;
+    this._fullscreenInitialized = false;
   }
 
   set hass(value) {
@@ -329,7 +329,7 @@ class LakisSolarworldDashboard extends HTMLElement {
           width: 100%;
         }
 
-        :host(.compact-sidebar) {
+        :host(.fullscreen-sidebar) {
           width: calc(100% + var(--lakis-sidebar-offset, 0px)) !important;
           margin-left: calc(0px - var(--lakis-sidebar-offset, 0px)) !important;
           position: relative;
@@ -1101,9 +1101,9 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._attachEvents();
     this._rendered = true;
 
-    if (!this._compactModeInitialized) {
-      this._compactModeInitialized = true;
-      setTimeout(() => this._enableCompactSidebar(), 80);
+    if (!this._fullscreenInitialized) {
+      this._fullscreenInitialized = true;
+      setTimeout(() => this._hideHASidebar(), 80);
     }
   }
 
@@ -1689,14 +1689,13 @@ class LakisSolarworldDashboard extends HTMLElement {
     `;
   }
 
-  _findInShadowRoots(tagName) {
-    const wanted = tagName.toLowerCase();
+  _findInShadowRoots(selector) {
     const found = [];
     const visit = (root) => {
       if (!root) return;
       const elements = root.querySelectorAll ? root.querySelectorAll('*') : [];
       for (const el of elements) {
-        if (el.tagName?.toLowerCase() === wanted) found.push(el);
+        if (el.matches?.(selector)) found.push(el);
         if (el.shadowRoot) visit(el.shadowRoot);
       }
     };
@@ -1704,37 +1703,38 @@ class LakisSolarworldDashboard extends HTMLElement {
     return found;
   }
 
-  _enableCompactSidebar() {
-    // Keep Home Assistant's icon navigation visible, but let the LAKIS panel
-    // reclaim the unused part of the original desktop sidebar column.
+  _hideHASidebar() {
+    // The native collapsed sidebar still reserves a black strip. Hide both the
+    // sidebar and its toggle, then expand this panel into the released space.
     if (!window.matchMedia('(min-width: 870px)').matches) return;
 
-    const compactWidth = 64;
-    const hostLeft = Math.round(this.getBoundingClientRect().left);
-    const offset = Math.max(0, hostLeft - compactWidth);
-    this.style.setProperty('--lakis-sidebar-offset', `${offset}px`);
-    this.classList.add('compact-sidebar');
-
     for (const sidebar of new Set(this._findInShadowRoots('ha-sidebar'))) {
-      sidebar.style.width = `${compactWidth}px`;
-      sidebar.style.minWidth = `${compactWidth}px`;
-      sidebar.style.maxWidth = `${compactWidth}px`;
-      sidebar.style.flex = `0 0 ${compactWidth}px`;
-      sidebar.style.overflow = 'hidden';
-      sidebar.style.position = 'relative';
-      sidebar.style.zIndex = '2';
+      sidebar.style.display = 'none';
+      sidebar.style.visibility = 'hidden';
+      sidebar.style.width = '0';
+      sidebar.style.minWidth = '0';
+      sidebar.style.maxWidth = '0';
+      sidebar.style.flex = '0 0 0';
+    }
 
-      if (sidebar.shadowRoot && !sidebar.shadowRoot.querySelector('[data-lakis-compact-sidebar]')) {
-        const style = document.createElement('style');
-        style.dataset.lakisCompactSidebar = '';
-        style.textContent = `
-          :host { width: ${compactWidth}px !important; min-width: ${compactWidth}px !important; max-width: ${compactWidth}px !important; }
-          ha-list-item, ha-md-list-item, a { min-width: ${compactWidth}px !important; padding-inline: 18px !important; }
-          .label, .text, [slot="headline"], [slot="supporting"] { display: none !important; }
-        `;
-        sidebar.shadowRoot.append(style);
+    for (const toggle of this._findInShadowRoots('button, ha-icon-button, ha-button-menu')) {
+      const label = [
+        toggle.getAttribute('aria-label'),
+        toggle.getAttribute('title'),
+        toggle.ariaLabel,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (label.includes('seitenleiste') || label.includes('sidebar')) {
+        toggle.style.display = 'none';
+        toggle.style.visibility = 'hidden';
       }
     }
+
+    // Read after Home Assistant has applied the hidden sidebar. Some frontend
+    // versions reclaim the column themselves; others keep the black strip.
+    const hostLeft = Math.round(this.getBoundingClientRect().left);
+    const offset = Math.max(0, hostLeft);
+    this.style.setProperty('--lakis-sidebar-offset', `${offset}px`);
+    this.classList.add('fullscreen-sidebar');
   }
 
   _attachEvents() {
@@ -2014,7 +2014,7 @@ class LakisSolarworldDashboard extends HTMLElement {
     return `
       <div class="footer">
         LAKIS SOLARWORLD ENTWICKLUNG — Nachhaltige Energie. Für heute. Für morgen.
-        · Version 1.5.9-beta.3 · ENTWICKLUNG
+        · Version 1.5.9-beta.4 · ENTWICKLUNG
       </div>
     `;
   }
