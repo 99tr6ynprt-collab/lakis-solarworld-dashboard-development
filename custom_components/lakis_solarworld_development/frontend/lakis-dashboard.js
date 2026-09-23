@@ -1,6 +1,6 @@
 /* LAKIS SOLARWORLD Dashboard
  * Dashboard UI
- * Version 1.5.9-beta.2
+ * Version 1.5.9-beta.3
  *
  * Design:
  * - black / near-black background
@@ -26,9 +26,6 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._moduleSavePromise = null;
     this._moduleEventsAttached = false;
     this._dirty = false;
-    this._haSidebarCompact = false;
-    this._haSidebarTargets = [];
-    this._haLayoutTargets = [];
     this._compactModeInitialized = false;
   }
 
@@ -332,6 +329,13 @@ class LakisSolarworldDashboard extends HTMLElement {
           width: 100%;
         }
 
+        :host(.compact-sidebar) {
+          width: calc(100% + var(--lakis-sidebar-offset, 0px)) !important;
+          margin-left: calc(0px - var(--lakis-sidebar-offset, 0px)) !important;
+          position: relative;
+          z-index: 1;
+        }
+
         * { box-sizing: border-box; }
 
         .app {
@@ -362,28 +366,6 @@ class LakisSolarworldDashboard extends HTMLElement {
               rgba(0,120,190,.12),
               transparent 48%
             );
-        }
-
-        .ha-sidebar-toggle {
-          position: fixed;
-          top: 14px;
-          left: 14px;
-          z-index: 10000;
-          width: 38px;
-          height: 38px;
-          border-radius: 12px;
-          border: 1px solid rgba(188,92,255,.72);
-          background: rgba(74,22,105,.78);
-          color: #fff;
-          box-shadow: 0 0 18px rgba(174,74,255,.28), inset 0 0 12px rgba(255,255,255,.05);
-          cursor: pointer;
-          font-size: 19px;
-          line-height: 1;
-          backdrop-filter: blur(10px);
-        }
-        .ha-sidebar-toggle:hover {
-          background: rgba(111,38,154,.88);
-          border-color: #d48cff;
         }
 
         .header {
@@ -1109,7 +1091,6 @@ class LakisSolarworldDashboard extends HTMLElement {
       </style>
 
       <div class="app">
-        <button class="ha-sidebar-toggle" data-ha-sidebar-toggle type="button" title="${this._haSidebarCompact ? 'Navigation ausklappen' : 'Navigation einklappen'}" aria-label="${this._haSidebarCompact ? 'Navigation ausklappen' : 'Navigation einklappen'}">${this._haSidebarCompact ? '☰' : '‹'}</button>
         ${this._renderHeader()}
         ${this._renderTabs()}
         ${this._renderContent()}
@@ -1122,7 +1103,7 @@ class LakisSolarworldDashboard extends HTMLElement {
 
     if (!this._compactModeInitialized) {
       this._compactModeInitialized = true;
-      setTimeout(() => this._enterCompactMode(), 80);
+      setTimeout(() => this._enableCompactSidebar(), 80);
     }
   }
 
@@ -1723,127 +1704,40 @@ class LakisSolarworldDashboard extends HTMLElement {
     return found;
   }
 
-  _setHASidebarCompact(compact) {
-    this._haSidebarCompact = compact;
-
-    // Home Assistant uses the normal page layout when the sidebar remains in
-    // the document. Shrinking it (rather than hiding it) lets the dashboard
-    // receive the additional page width and keeps the navigation icons usable.
+  _enableCompactSidebar() {
+    // Keep Home Assistant's icon navigation visible, but let the LAKIS panel
+    // reclaim the unused part of the original desktop sidebar column.
     if (!window.matchMedia('(min-width: 870px)').matches) return;
 
-    const sidebars = this._findInShadowRoots('ha-sidebar');
-    const unique = [...new Set(sidebars)];
+    const compactWidth = 64;
+    const hostLeft = Math.round(this.getBoundingClientRect().left);
+    const offset = Math.max(0, hostLeft - compactWidth);
+    this.style.setProperty('--lakis-sidebar-offset', `${offset}px`);
+    this.classList.add('compact-sidebar');
 
-    if (compact) {
-      if (!this._haSidebarTargets.length) {
-        this._haSidebarTargets = unique.map((el) => ({
-          el,
-          display: el.style.display,
-          visibility: el.style.visibility,
-          width: el.style.width,
-          minWidth: el.style.minWidth,
-          maxWidth: el.style.maxWidth,
-          flex: el.style.flex,
-          overflow: el.style.overflow,
-          compactStyle: null,
-        }));
-      }
-    } else if (!this._haSidebarTargets.length) {
-      return;
-    }
+    for (const sidebar of new Set(this._findInShadowRoots('ha-sidebar'))) {
+      sidebar.style.width = `${compactWidth}px`;
+      sidebar.style.minWidth = `${compactWidth}px`;
+      sidebar.style.maxWidth = `${compactWidth}px`;
+      sidebar.style.flex = `0 0 ${compactWidth}px`;
+      sidebar.style.overflow = 'hidden';
+      sidebar.style.position = 'relative';
+      sidebar.style.zIndex = '2';
 
-    for (const target of this._haSidebarTargets) {
-      if (compact) {
-        target.el.style.display = target.display || '';
-        target.el.style.visibility = target.visibility || '';
-        target.el.style.width = '64px';
-        target.el.style.minWidth = '64px';
-        target.el.style.maxWidth = '64px';
-        target.el.style.flex = '0 0 64px';
-        target.el.style.overflow = 'hidden';
-
-        if (!target.compactStyle && target.el.shadowRoot) {
-          const style = document.createElement('style');
-          style.dataset.lakisCompactSidebar = '';
-          style.textContent = `
-            :host { width: 64px !important; min-width: 64px !important; max-width: 64px !important; }
-            ha-list-item, ha-md-list-item, a { min-width: 64px !important; padding-inline: 18px !important; }
-            .label, .text, [slot="headline"], [slot="supporting"] { display: none !important; }
-          `;
-          target.el.shadowRoot.append(style);
-          target.compactStyle = style;
-        }
-      } else {
-        target.el.style.display = target.display;
-        target.el.style.visibility = target.visibility;
-        target.el.style.width = target.width;
-        target.el.style.minWidth = target.minWidth;
-        target.el.style.maxWidth = target.maxWidth;
-        target.el.style.flex = target.flex;
-        target.el.style.overflow = target.overflow;
-        target.compactStyle?.remove();
+      if (sidebar.shadowRoot && !sidebar.shadowRoot.querySelector('[data-lakis-compact-sidebar]')) {
+        const style = document.createElement('style');
+        style.dataset.lakisCompactSidebar = '';
+        style.textContent = `
+          :host { width: ${compactWidth}px !important; min-width: ${compactWidth}px !important; max-width: ${compactWidth}px !important; }
+          ha-list-item, ha-md-list-item, a { min-width: ${compactWidth}px !important; padding-inline: 18px !important; }
+          .label, .text, [slot="headline"], [slot="supporting"] { display: none !important; }
+        `;
+        sidebar.shadowRoot.append(style);
       }
     }
-
-    if (compact && !this._haLayoutTargets.length) {
-      const layoutTargets = [
-        document.documentElement,
-        document.body,
-        ...this._findInShadowRoots('home-assistant'),
-        ...this._findInShadowRoots('home-assistant-main'),
-      ].filter(Boolean);
-      this._haLayoutTargets = [...new Set(layoutTargets)].map((el) => ({
-        el,
-        sidebarWidth: el.style.getPropertyValue('--sidebar-width'),
-      }));
-    }
-
-    for (const target of this._haLayoutTargets) {
-      if (compact) {
-        target.el.style.setProperty('--sidebar-width', '64px');
-      } else if (target.sidebarWidth) {
-        target.el.style.setProperty('--sidebar-width', target.sidebarWidth);
-      } else {
-        target.el.style.removeProperty('--sidebar-width');
-      }
-    }
-
-    if (!compact) {
-      this._haSidebarTargets = [];
-      this._haLayoutTargets = [];
-    }
-  }
-
-  _enterCompactMode() {
-    this._setHASidebarCompact(true);
-    this._updateCompactButton();
-  }
-
-  _exitCompactMode() {
-    this._setHASidebarCompact(false);
-    this._updateCompactButton();
-  }
-
-  _updateCompactButton() {
-    const button = this.querySelector('[data-ha-sidebar-toggle]');
-    if (!button) return;
-    button.textContent = this._haSidebarCompact ? '☰' : '‹';
-    button.title = this._haSidebarCompact ? 'Navigation ausklappen' : 'Navigation einklappen';
-    button.setAttribute('aria-label', button.title);
   }
 
   _attachEvents() {
-    const sidebarToggle = this.querySelector("[data-ha-sidebar-toggle]");
-    if (sidebarToggle) {
-      sidebarToggle.addEventListener("click", () => {
-        if (this._haSidebarCompact) {
-          this._exitCompactMode();
-        } else {
-          this._enterCompactMode();
-        }
-      });
-    }
-
     this.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", async () => {
         if (this._tab === "settings") {
@@ -2120,7 +2014,7 @@ class LakisSolarworldDashboard extends HTMLElement {
     return `
       <div class="footer">
         LAKIS SOLARWORLD ENTWICKLUNG — Nachhaltige Energie. Für heute. Für morgen.
-        · Version 1.5.9-beta.2 · ENTWICKLUNG
+        · Version 1.5.9-beta.3 · ENTWICKLUNG
       </div>
     `;
   }

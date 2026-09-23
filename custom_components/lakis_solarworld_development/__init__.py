@@ -74,7 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             frontend_url_path="lakis-solarworld-development",
             module_url=(
                 "/api/lakis_solarworld_development/static/"
-                "lakis-dashboard.js?v=1.5.9-beta.2"
+                "lakis-dashboard.js?v=1.5.9-beta.3"
             ),
             sidebar_title="LAKIS SOLARWORLD ENTWICKLUNG",
             sidebar_icon="mdi:solar-power",
