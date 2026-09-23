@@ -1,6 +1,6 @@
 /* LAKIS SOLARWORLD Dashboard
  * Dashboard UI
- * Version 1.5.9-beta.4
+ * Version 1.5.9-beta.5
  *
  * Design:
  * - black / near-black background
@@ -26,7 +26,6 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._moduleSavePromise = null;
     this._moduleEventsAttached = false;
     this._dirty = false;
-    this._fullscreenInitialized = false;
   }
 
   set hass(value) {
@@ -327,13 +326,6 @@ class LakisSolarworldDashboard extends HTMLElement {
           display: block;
           min-height: 100vh;
           width: 100%;
-        }
-
-        :host(.fullscreen-sidebar) {
-          width: calc(100% + var(--lakis-sidebar-offset, 0px)) !important;
-          margin-left: calc(0px - var(--lakis-sidebar-offset, 0px)) !important;
-          position: relative;
-          z-index: 1;
         }
 
         * { box-sizing: border-box; }
@@ -1101,10 +1093,6 @@ class LakisSolarworldDashboard extends HTMLElement {
     this._attachEvents();
     this._rendered = true;
 
-    if (!this._fullscreenInitialized) {
-      this._fullscreenInitialized = true;
-      setTimeout(() => this._hideHASidebar(), 80);
-    }
   }
 
   _renderHeader() {
@@ -1687,54 +1675,6 @@ class LakisSolarworldDashboard extends HTMLElement {
         </div>
       </div>
     `;
-  }
-
-  _findInShadowRoots(selector) {
-    const found = [];
-    const visit = (root) => {
-      if (!root) return;
-      const elements = root.querySelectorAll ? root.querySelectorAll('*') : [];
-      for (const el of elements) {
-        if (el.matches?.(selector)) found.push(el);
-        if (el.shadowRoot) visit(el.shadowRoot);
-      }
-    };
-    visit(document);
-    return found;
-  }
-
-  _hideHASidebar() {
-    // The native collapsed sidebar still reserves a black strip. Hide both the
-    // sidebar and its toggle, then expand this panel into the released space.
-    if (!window.matchMedia('(min-width: 870px)').matches) return;
-
-    for (const sidebar of new Set(this._findInShadowRoots('ha-sidebar'))) {
-      sidebar.style.display = 'none';
-      sidebar.style.visibility = 'hidden';
-      sidebar.style.width = '0';
-      sidebar.style.minWidth = '0';
-      sidebar.style.maxWidth = '0';
-      sidebar.style.flex = '0 0 0';
-    }
-
-    for (const toggle of this._findInShadowRoots('button, ha-icon-button, ha-button-menu')) {
-      const label = [
-        toggle.getAttribute('aria-label'),
-        toggle.getAttribute('title'),
-        toggle.ariaLabel,
-      ].filter(Boolean).join(' ').toLowerCase();
-      if (label.includes('seitenleiste') || label.includes('sidebar')) {
-        toggle.style.display = 'none';
-        toggle.style.visibility = 'hidden';
-      }
-    }
-
-    // Read after Home Assistant has applied the hidden sidebar. Some frontend
-    // versions reclaim the column themselves; others keep the black strip.
-    const hostLeft = Math.round(this.getBoundingClientRect().left);
-    const offset = Math.max(0, hostLeft);
-    this.style.setProperty('--lakis-sidebar-offset', `${offset}px`);
-    this.classList.add('fullscreen-sidebar');
   }
 
   _attachEvents() {
